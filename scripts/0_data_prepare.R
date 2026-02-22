@@ -1,10 +1,10 @@
-# scripts/data_prepare.R
+# scripts/0_data_prepare.R
 # 目标：完成数据合并、清洗与变量准备。
 # 输入：data/CEPSw1/*.dta, data/CEPSw2/*.dta
 # 输出：data/CEPS_prepared.rds
 
 suppressPackageStartupMessages({
-  library(dplyr)
+  library(tidyverse)
   library(bruceR)
   library(here)
 })
@@ -70,13 +70,17 @@ ceps <- ceps |>
     ),
     # 认知能力得分
     cog3pl = cog3pl,
-    # 寄宿：寄宿为 1，走读为 0 (WARN: 可进行插补)
-    jisu = case_when(c18 == 1 ~ 1, c18 == 2 ~ 0, TRUE ~ NA_real_),
+    # 寄宿：W1 缺失时用 W2(w2b15) 回填 c18
+    jisu = case_when(
+      coalesce(c18, w2b15) == 1 ~ 1,
+      coalesce(c18, w2b15) == 2 ~ 0,
+      TRUE ~ NA_real_
+    ),
     # 父母居住情况
     juzhu = factor(
       stlb_4c,
-      levels = 1:4,
-      labels = c("父母都在家", "只有目前在家", "只有父亲在家", "父母都不在家")
+      levels = c(4, 1, 2, 3),
+      labels = c("父母都不在家", "父母都在家", "只有母亲在家", "只有父亲在家")
     ),
   )
 
@@ -157,19 +161,25 @@ ceps <- ceps |>
       TRUE ~ NA_real_
     ),
 
-    # 经济状况（WARN：可选 w2be23 填补）
-    wealth = be19,
+    # 经济状况：W1 缺失时使用 W2 回填
+    wealth = coalesce(be19, w2be23),
 
-    # 党员身份：共产党员为 1，其余为 0
+    # 党员身份：W1 缺失时按父/母身份使用 W2 回填
+    w2_party_raw = case_when(
+      ba01 == 1 ~ w2be07,
+      ba01 == 2 ~ w2be16,
+      TRUE ~ NA_real_
+    ),
+    party_raw = coalesce(be06, w2_party_raw),
     party = case_when(
-      be06 == 1 ~ 1,
-      be06 %in% c(2, 3) ~ 0,
+      party_raw == 1 ~ 1,
+      party_raw %in% c(2, 3) ~ 0,
       TRUE ~ NA_real_
     ),
 
-    # 是否认识班内其他家长（因子变量）
+    # 是否认识班内其他家长：W1 缺失时用 W2(w2ba25) 回填
     know_other_par = factor(
-      ba12,
+      coalesce(ba12, w2ba25),
       levels = 0:2,
       labels = c("不认识", "认识一部分", "全都认识")
     )
@@ -229,23 +239,26 @@ ceps <- ceps |>
     # 学校地理位置
     sch_loc = factor(
       schloc_5c,
-      levels = 1:5,
+      levels = c(5, 1, 2, 3, 4),
       labels = c(
-        "市/县城的中心城区",
-        "市/县城的边缘城区",
-        "市/县城的城乡结合部",
-        "市/县城区外的镇",
-        "农村"
+        "农村",
+        "市/县的中心城区",
+        "市/县的边缘城区",
+        "市/县的城乡结合部",
+        "市/县外的镇"
       )
     ),
     # 学校数据中已给出“本校家长平均教育程度/职业收入”
     sch_par_edu = plb08,
     sch_par_income = plb09,
     # 学校教师平均受教育年限
-    across(c(plc0401a, plc0402a, plc0403a, plc0404a, plc0405a), ~ as.numeric(.x)),
+    across(
+      c(plc0401a, plc0402a, plc0403a, plc0404a, plc0405a),
+      ~ replace_na(as.numeric(.x), 0)
+    ),
     total_teachers = plc0401a + plc0402a + plc0403a + plc0404a + plc0405a,
     sch_teacher_edu = if_else(
-      total_teachers > 0,
+      total_teachers > 10,
       (plc0401a * 9 + plc0402a * 12 + plc0403a * 15 + plc0404a * 16 + plc0405a * 19) / total_teachers,
       NA_real_
     )
@@ -263,16 +276,13 @@ Freq(ceps$sch_loc)
 
 # # 教养方式严格程度
 jiaoyang_data <- ceps |>
-  select(ids, starts_with("ba080")) |>
-  mutate(across(
-    starts_with("ba080"),
-    as.numeric
-  )) |>
+  select(ids, num_range("ba080", c(1, 2, 5, 6, 7, 8))) |>
+  mutate(across(starts_with("ba080"), as.numeric)) |>
   drop_na()
 jiaoyang_pca_result <- PCA(
   data = jiaoyang_data,
   var = "ba080",
-  items = 1:8,
+  items = c(1, 2, 5, 6, 7, 8),
   nfactors = 1,
   rotation = "none",
   plot.scree = FALSE
@@ -415,33 +425,6 @@ ceps <- ceps |>
     )
   )
 
-# 计算班级投入氛围因子分数
-touru_data <- ceps |>
-  select(ids, ends_with("_atomos_z"), -w1_qiwang_atomos_z) |>
-  drop_na()
-touru_pca <- PCA(
-  data = touru_data,
-  vars = c(
-    "w1_jiandu_atomos_z",
-    "w1_jiaoyang_atomos_z",
-    "w1_buxi_rate_atomos_z",
-    "w1_buxi_money_atomos_z",
-    "w1_buxi_time_atomos_z",
-    "w1_contact_atomos_z"
-  ),
-  nfactors = 1,
-  rotation = "none",
-  plot.scree = FALSE
-)
-ceps <- ceps |>
-  left_join(
-    tibble(
-      ids = touru_data$ids,
-      w1_touru_atomos_z = touru_pca$result$scores[, 1]
-    ),
-    by = "ids"
-  )
-
 ceps |>
   select(ends_with("_atomos_z")) |>
   Describe()
@@ -544,7 +527,36 @@ ceps |>
   select(w2_jiandu, w2_jiaoyang, w2_buxi, w2_buxi_money_log, w2_buxi_time_log, w2_contact_z) |>
   Describe()
 
-# %% 4 保存 ------------------------------------------------
+
+# %% 4 缺失值插补 ------------------------------------------------
+
+calc_mode <- function(x) {
+  ux <- unique(na.omit(x))
+  ux[which.max(tabulate(match(x, ux)))]
+}
+
+ceps <- ceps |>
+  mutate(
+    sch_par_edu = if_else(is.na(sch_par_edu), mean(sch_par_edu, na.rm = TRUE), sch_par_edu),
+    sch_par_income = if_else(is.na(sch_par_income), mean(sch_par_income, na.rm = TRUE), sch_par_income),
+    .by = schids
+  ) |>
+  mutate(
+    # 连续/定序变量：使用班级均值
+    SES = if_else(is.na(SES), mean(SES, na.rm = TRUE), SES),
+    parage = if_else(is.na(parage), mean(parage, na.rm = TRUE), parage),
+    wealth = if_else(is.na(wealth), mean(wealth, na.rm = TRUE), wealth),
+
+    # 分类/虚拟变量：使用班级众数
+    party = if_else(is.na(party), calc_mode(party), party),
+    parhk = if_else(is.na(parhk), calc_mode(parhk), parhk),
+    jisu = if_else(is.na(jisu), calc_mode(jisu), jisu),
+    w1_buxi = if_else(is.na(w1_buxi), calc_mode(w1_buxi), w1_buxi),
+
+    .by = clsids
+  )
+
+# %% 5 保存 ------------------------------------------------
 
 # fmt: skip
 final_vars <- c(
@@ -554,7 +566,7 @@ final_vars <- c(
   "w2_jiandu", "w2_jiaoyang", "w2_buxi",
   "w2_buxi_money_log", "w2_buxi_time_log", "w2_contact_z",
   # 核心自变量（班级氛围）
-  "w1_qiwang_atomos_z", "w1_touru_atomos_z",
+  "w1_qiwang_atomos_z",
   "w1_jiandu_atomos_z", "w1_jiaoyang_atomos_z", "w1_buxi_rate_atomos_z",
   "w1_buxi_money_atomos_z", "w1_buxi_time_atomos_z", "w1_contact_atomos_z",
   # 滞后项（W1）
