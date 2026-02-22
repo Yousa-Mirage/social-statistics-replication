@@ -134,7 +134,7 @@ var_groups <- list(
 )
 
 ceps <- readRDS(here("data", "CEPS_prepared.rds")) |>
-  select(-ids, -clsids, -schids)
+  select(-ids, -clsids, -schids, -is_random_class)
 
 # 格式化函数
 fmt_n <- function(x) {

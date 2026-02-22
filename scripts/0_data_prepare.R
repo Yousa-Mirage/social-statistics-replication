@@ -580,10 +580,14 @@ final_vars <- c(
   # 控制变量：班级层面
   "clgrade", "smoke", "game",
   # 控制变量：学校层面
-  "sch_rank", "sch_loc", "sch_par_edu", "sch_par_income", "sch_teacher_edu"
+  "sch_rank", "sch_loc", "sch_par_edu", "sch_par_income", "sch_teacher_edu",
+  # 随机分班指示变量(稳健性检验)
+  "is_random_class"
 )
 
 ceps |>
+  # 计算随机分班指示变量，用于稳健性检验
+  mutate(is_random_class = if_else(hra05 == 2 & ple1503 == 1, 1, 0)) |>
   select(all_of(final_vars)) |>
   export(here("data/CEPS_prepared.rds"))
 

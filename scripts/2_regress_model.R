@@ -1,7 +1,7 @@
-# scripts/2_model.R
-# 目标：复刻论文模型拟合
+# scripts/2_regress_model.R
+# 目标：复刻论文模型拟合，输出 Typst 表格
 # 输入：data/CEPS_prepared.rds
-# 输出：data/output/original_models.rds, data/output/regression_table.typ
+# 输出：data/output/regression_table.typ
 
 suppressPackageStartupMessages({
   library(tidyverse)
@@ -17,35 +17,24 @@ dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 ceps <- import(here("data", "CEPS_prepared.rds"), as = "tbl")
 
 # %% 模型公式准备
-# 通用控制变量列表
-common_controls <- c(
-  # 家长层面
-  "is_father",
-  "parage",
-  "SES",
-  # 学生层面
-  "cog3pl",
-  "stsex",
-  "ethgro",
-  "jisu",
-  "sibling",
-  "juzhu",
-  # 班级层面
-  "clgrade",
-  "smoke",
-  "game",
-  # 学校层面
-  "sch_loc",
-  "sch_rank",
-  "sch_par_edu",
-  "sch_par_income",
-  "sch_teacher_edu",
-  # 基期教育期望
-  "w1_qiwang"
+# fmt: skip
+ctrl_formula <- str_c(
+  c(
+    # 家长层面
+    "is_father", "parage", "SES",
+    # 学生层面
+    "cog3pl", "stsex", "ethgro", "jisu", "sibling", "juzhu",
+    # 班级层面
+    "clgrade", "smoke", "game",
+    # 学校层面
+    "sch_loc", "sch_rank", "sch_par_edu", "sch_par_income", "sch_teacher_edu",
+    # 基期教育期望
+    "w1_qiwang"
+  ),
+  collapse = " + "
 )
-ctrl_formula <- str_c(common_controls, collapse = " + ")
 
-# 闭包辅助函数
+# 构建模型拟合公式辅助函数
 build_formula <- function(dv, iv_touru, lagged_dv) {
   # {dv}: 因变量
   # w1_qiwang_atomos_z: 核心自变量-班级家长期望氛围
@@ -60,52 +49,32 @@ build_formula <- function(dv, iv_touru, lagged_dv) {
 }
 
 # %% 模型拟合
-
-# 模型1：学业辅导
-m1_jiandu <- lmer(
-  build_formula("w2_jiandu", "w1_jiandu_atomos_z", "w1_jiandu"),
-  data = ceps
-)
-
-# 模型2：教养方式
-m2_jiaoyang <- lmer(
-  build_formula("w2_jiaoyang", "w1_jiaoyang_atomos_z", "w1_jiaoyang"),
-  data = ceps
-)
-
-# 模型3：课外班参与
-m3_buxi <- lmer(
-  build_formula("w2_buxi", "w1_buxi_rate_atomos_z", "w1_buxi"),
-  data = ceps
-)
-
-# 模型4：金钱投入
-m4_money <- lmer(
-  build_formula("w2_buxi_money_log", "w1_buxi_money_atomos_z", "w1_buxi_money_log"),
-  data = ceps
-)
-
-# 模型5：补习时间
-m5_time <- lmer(
-  build_formula("w2_buxi_time_log", "w1_buxi_time_atomos_z", "w1_buxi_time_log"),
-  data = ceps
-)
-
-# 模型6：家校联系
-m6_contact <- lmer(
-  build_formula("w2_contact_z", "w1_contact_atomos_z", "w1_contact_z"),
-  data = ceps
-)
-
 models_list <- list(
-  "学业辅导" = m1_jiandu,
-  "教养方式" = m2_jiaoyang,
-  "课外班参与" = m3_buxi,
-  "金钱投入" = m4_money,
-  "补习时间" = m5_time,
-  "家校联系" = m6_contact
+  "学业辅导" = lmer(
+    build_formula("w2_jiandu", "w1_jiandu_atomos_z", "w1_jiandu"),
+    data = ceps
+  ),
+  "教养方式" = lmer(
+    build_formula("w2_jiaoyang", "w1_jiaoyang_atomos_z", "w1_jiaoyang"),
+    data = ceps
+  ),
+  "课外班参与" = lmer(
+    build_formula("w2_buxi", "w1_buxi_rate_atomos_z", "w1_buxi"),
+    data = ceps
+  ),
+  "金钱投入" = lmer(
+    build_formula("w2_buxi_money_log", "w1_buxi_money_atomos_z", "w1_buxi_money_log"),
+    data = ceps
+  ),
+  "补习时间" = lmer(
+    build_formula("w2_buxi_time_log", "w1_buxi_time_atomos_z", "w1_buxi_time_log"),
+    data = ceps
+  ),
+  "家校联系" = lmer(
+    build_formula("w2_contact_z", "w1_contact_atomos_z", "w1_contact_z"),
+    data = ceps
+  )
 )
-export(models_list, here(output_dir, "original_models.rds"))
 
 # %% 模型结果整理
 if (!exists("models_list")) {
@@ -236,7 +205,7 @@ tab_reg <- modelsummary(
   coef_map = coef_map,
   gof_omit = ".*",
   add_rows = build_custom_gof(models_list),
-  stars = c("*" = 0.05, "**" = 0.01, "***" = 0.001),
+  stars = TRUE,
 ) |>
   theme_empty() |>
   group_tt(
@@ -261,5 +230,5 @@ tab_reg <- modelsummary(
 
 save_tt(tab_reg, here(output_dir, "regression_table.typ"), overwrite = TRUE)
 
-cli::cli_alert_success("Models Summarized and Table Generated!")
+cli::cli_alert_success("Models Fitted and Table Generated!")
 cli::cli_alert_info("Output: {.file {here(output_dir, 'regression_table.typ')}}")
