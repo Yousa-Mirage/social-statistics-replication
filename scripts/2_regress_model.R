@@ -225,6 +225,7 @@ tab_reg <- modelsummary(
   style_tt(j = 2:7, align = "c") |>
   style_tt(i = 22:27, j = 1, indent = 1) |>
   style_tt(i = 35:42, j = 1, indent = 1) |>
+  # 转义特殊字符
   format_tt(j = 2:7, escape = TRUE) |>
   format_tt("notes", escape = TRUE)
 
