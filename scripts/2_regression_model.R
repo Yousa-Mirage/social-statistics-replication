@@ -140,7 +140,7 @@ build_custom_gof <- function(models) {
   }) |>
     set_names(names(models)) |>
     add_column(
-      term = c("ICC(班级 | 学校)", "ICC(学校)", "似然比检验(p 值)", "样本量", "学校数量", "班级数量"),
+      term = c("ICC(班级 | 学校)", "ICC(学校)", "似然比检验($p$ 值)", "样本量", "学校数量", "班级数量"),
       .before = 1
     )
 }
@@ -210,13 +210,15 @@ tab_reg <- modelsummary(
   theme_empty() |>
   group_tt(
     i = list(
-      "居住状况 (父母都不在家 = 0)" = 21,
-      "学校地理位置 (农村 = 0)" = 33
+      "居住状况 (父母都不在家 $= 0$)" = 21,
+      "学校地理位置 (农村 $= 0$)" = 33
     )
   ) |>
   # 手动添加表格线
   style_tt(i = 0, line = "t", line_width = 0.1) |>
   style_tt(i = 0, line = "b", line_width = 0.05) |>
+  style_tt(i = 4, line = "b", line_width = 0.05) |>
+  style_tt(i = 51, line = "t", line_width = 0.05) |>
   style_tt(i = 55, line = "t", line_width = 0.05) |>
   style_tt(i = 60, line = "b", line_width = 0.1) |>
   # 表格内部样式
