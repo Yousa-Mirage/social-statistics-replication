@@ -1,6 +1,8 @@
-# Stata Source Code
-Stata 原始代码/
+# Source Code
+*.zip
 
+# env
+.env
 
 # Data
 data/
