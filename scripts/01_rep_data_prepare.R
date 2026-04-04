@@ -1,13 +1,16 @@
-# scripts/0_data_prepare.R
+# scripts/01_rep_data_prepare.R
 # 目标：完成数据合并、清洗与变量准备。
 # 输入：data/CEPSw1/*.dta, data/CEPSw2/*.dta
-# 输出：data/CEPS_prepared.rds
+# 输出：data/rep_output/CEPS_prepared.rds
 
 suppressPackageStartupMessages({
   library(tidyverse)
   library(bruceR)
   library(here)
 })
+
+output_dir <- here("data", "rep_output")
+dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 
 # %% 1 读取并合并 W1/W2 原始数据 ------------------------------------------------
 
@@ -252,6 +255,7 @@ ceps <- ceps |>
     sch_par_edu = plb08,
     sch_par_income = plb09,
     # 学校教师平均受教育年限
+    # WARN: 如果缺失表示“学校没填”，那会把学校教师平均教育年限系统性压低
     across(
       c(plc0401a, plc0402a, plc0403a, plc0404a, plc0405a),
       ~ replace_na(as.numeric(.x), 0)
@@ -530,16 +534,26 @@ ceps |>
 
 # %% 4 缺失值插补 ------------------------------------------------
 
+# 众数辅助函数
 calc_mode <- function(x) {
   ux <- unique(na.omit(x))
+  if (length(ux) == 0) {
+    return(NA)
+  }
   ux[which.max(tabulate(match(x, ux)))]
 }
 
+# 学校层面变量的缺失值使用全部学校的均值插补
+school_mean_imputes <- ceps |>
+  summarise(
+    sch_par_edu = mean(sch_par_edu, na.rm = TRUE),
+    sch_par_income = mean(sch_par_income, na.rm = TRUE)
+  )
+
 ceps <- ceps |>
   mutate(
-    sch_par_edu = if_else(is.na(sch_par_edu), mean(sch_par_edu, na.rm = TRUE), sch_par_edu),
-    sch_par_income = if_else(is.na(sch_par_income), mean(sch_par_income, na.rm = TRUE), sch_par_income),
-    .by = schids
+    sch_par_edu = if_else(is.na(sch_par_edu), school_mean_imputes$sch_par_edu, sch_par_edu),
+    sch_par_income = if_else(is.na(sch_par_income), school_mean_imputes$sch_par_income, sch_par_income)
   ) |>
   mutate(
     # 连续/定序变量：使用班级均值
@@ -589,7 +603,7 @@ ceps |>
   # 计算随机分班指示变量，用于稳健性检验
   mutate(is_random_class = if_else(hra05 == 2 & ple1503 == 1, 1, 0)) |>
   select(all_of(final_vars)) |>
-  export(here("data/CEPS_prepared.rds"))
+  export(here(output_dir, "CEPS_prepared.rds"))
 
 cli::cli_alert_success("Data preparation completed.")
-cli::cli_alert_info("Output: {.file {here('data/CEPS_prepared.rds')}}")
+cli::cli_alert_info("Output: {.file {here(output_dir, 'CEPS_prepared.rds')}}")

@@ -1,7 +1,7 @@
-# scripts/3_robust_hetero.R
+# scripts/04_rep_robust_hetero.R
 # 目标：复刻论文异质性分析和稳健性检验，输出 Typst 表格
-# 输入：data/CEPS_prepared.rds
-# 输出：data/output/robust_table.typ, data/output/hetero_table.typ
+# 输入：data/rep_output/CEPS_prepared.rds
+# 输出：data/rep_output/robust_table.typ, data/rep_output/hetero_table.typ
 
 suppressPackageStartupMessages({
   library(tidyverse)
@@ -11,7 +11,7 @@ suppressPackageStartupMessages({
   library(tinytable)
 })
 
-output_dir <- here("data", "output")
+output_dir <- here("data", "rep_output")
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 
 # 通用控制变量列表
@@ -35,7 +35,7 @@ ctrl_formula <- str_c(
 # %% 稳健性检验 - 随机分班
 cli::cli_alert_info("正在进行稳健性检验 - 随机分班...")
 
-ceps_random <- import(here("data", "CEPS_prepared.rds"), as = "tbl") |>
+ceps_random <- import(here(output_dir, "CEPS_prepared.rds"), as = "tbl") |>
   filter(is_random_class == 1)
 
 # 构建模型拟合公式辅助函数
@@ -131,7 +131,7 @@ cli::cli_alert_info("Output: {.file {here(output_dir, 'robust_table.typ')}}")
 # %% 异质性分析
 cli::cli_alert_info("正在进行异质性分析...")
 
-ceps <- import(here("data", "CEPS_prepared.rds"), as = "tbl") |>
+ceps <- import(here(output_dir, "CEPS_prepared.rds"), as = "tbl") |>
   mutate(know_other_par = as.numeric(know_other_par) - 1)
 
 # 辅助函数：生成异质性分析模型公式

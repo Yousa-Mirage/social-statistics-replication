@@ -1,16 +1,20 @@
-# scripts/1_descriptive_analyze.R
+# scripts/02_rep_descriptive_analyze.R
 # 目标：使用 tinytable 生成可直接用于 Typst 的描述性统计表
-# 输入：data/CEPS_prepared.rds
-# 输出：data/output/descriptive_table.typ
+# 输入：data/rep_output/CEPS_prepared.rds
+# 输出：data/rep_output/descriptive_table.typ
 
 suppressPackageStartupMessages({
   library(tidyverse)
+  library(bruceR)
   library(tinytable)
   library(here)
 })
 
-output_dir <- here("data", "output")
+output_dir <- here("data", "rep_output")
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+
+ceps <- import(here(output_dir, "CEPS_prepared.rds"), as = "tbl") |>
+  select(-ids, -clsids, -schids, -is_random_class)
 
 # 变量标签
 var_labels <- list(
@@ -133,9 +137,6 @@ var_groups <- list(
   )
 )
 
-ceps <- readRDS(here("data", "CEPS_prepared.rds")) |>
-  select(-ids, -clsids, -schids, -is_random_class)
-
 # 格式化函数
 fmt_n <- function(x) {
   formatC(x, format = "d", big.mark = ",")
@@ -231,5 +232,5 @@ ttbl <- desc_df |>
 
 save_tt(ttbl, here(output_dir, "descriptive_table.typ"), overwrite = TRUE)
 
-message("[OK] Descriptive tinytable completed.")
-message("[OUT] data/output/descriptive_table.typ")
+cli::cli_alert_success("Descriptive tinytable completed.")
+cli::cli_alert_info("Output: {.file {here(output_dir, 'descriptive_table.typ')}}")

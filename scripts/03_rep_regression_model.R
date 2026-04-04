@@ -1,7 +1,7 @@
-# scripts/2_regress_model.R
+# scripts/03_rep_regression_model.R
 # 目标：复刻论文模型拟合，输出 Typst 表格
-# 输入：data/CEPS_prepared.rds
-# 输出：data/output/regression_table.typ
+# 输入：data/rep_output/CEPS_prepared.rds
+# 输出：data/rep_output/regression_table.typ
 
 suppressPackageStartupMessages({
   library(tidyverse)
@@ -11,10 +11,10 @@ suppressPackageStartupMessages({
   library(tinytable)
 })
 
-output_dir <- here("data", "output")
+output_dir <- here("data", "rep_output")
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 
-ceps <- import(here("data", "CEPS_prepared.rds"), as = "tbl")
+ceps <- import(here(output_dir, "CEPS_prepared.rds"), as = "tbl")
 
 # %% 模型公式准备
 # fmt: skip
