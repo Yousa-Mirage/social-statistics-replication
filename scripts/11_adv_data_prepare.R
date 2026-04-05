@@ -283,55 +283,7 @@ Freq(ceps$sch_loc)
 # %% 3 因变量、自变量、滞后变量准备 ------------------------------------------------
 ## %% 滞后变量 ------------------------------------------------
 
-# 只有家校联系频率需要标准化，两个因子已经是标准化得分了，金钱和时间进行了对数化，是否参与补习是二元变量不需要处理。
-
-# # 教养方式严格程度
-jiaoyang_data <- ceps |>
-  select(ids, num_range("ba080", c(1, 2, 5, 6, 7, 8))) |>
-  mutate(across(starts_with("ba080"), as.numeric)) |>
-  drop_na()
-jiaoyang_pca_result <- PCA(
-  data = jiaoyang_data,
-  var = "ba080",
-  items = c(1, 2, 5, 6, 7, 8),
-  nfactors = 1,
-  rotation = "none",
-  plot.scree = FALSE
-)
-
-# 家长每周监督辅导
-jiandu_data <- ceps |>
-  select(ids, b2201, b2202) |>
-  mutate(across(
-    c(b2201, b2202),
-    as.numeric
-  )) |>
-  drop_na()
-jiandu_pca_result <- PCA(
-  data = jiandu_data,
-  vars = c("b2201", "b2202"),
-  nfactors = 1,
-  rotation = "none",
-  plot.scree = FALSE
-)
-
 ceps <- ceps |>
-  left_join(
-    # 家长每周监督辅导
-    tibble(
-      ids = jiandu_data$ids,
-      w1_jiandu = jiandu_pca_result$result$scores[, 1]
-    ),
-    by = "ids"
-  ) |>
-  left_join(
-    # 教养方式严格程度
-    tibble(
-      ids = jiaoyang_data$ids,
-      w1_jiaoyang = jiaoyang_pca_result$result$scores[, 1]
-    ),
-    by = "ids"
-  ) |>
   mutate(
     # 是否参与补习
     w1_buxi = case_when(
@@ -377,31 +329,19 @@ ceps <- ceps |>
       NA_real_,
       missing = NA_real_
     ),
-    # 家校联系频率
-    w1_contact = as.numeric(bb02),
-    w1_contact_ord = ordered(
-      w1_contact,
-      levels = 1:4,
-      labels = c("从来没有", "一次", "二次到四次", "五次及以上")
-    ),
-    w1_contact_z = as.numeric(scale(w1_contact))
   )
 
 ceps |>
   select(
-    w1_jiandu,
-    w1_jiaoyang,
     w1_buxi,
     w1_buxi_money_log,
     w1_buxi_money_pos,
     w1_buxi_money_pos_log,
     w1_buxi_time_log,
     w1_buxi_time_pos,
-    w1_buxi_time_pos_log,
-    w1_contact_z
+    w1_buxi_time_pos_log
   ) |>
   Describe()
-Freq(ceps$w1_contact_ord)
 
 ## %% 自变量 ------------------------------------------------
 
@@ -514,17 +454,7 @@ ceps <- ceps |>
   mutate(
     # 班级家长期望氛围
     w1_qiwang_atomos = get_atomos(w1_qiwang),
-    # 班级家长投入氛围
-    w1_jiandu_atomos = get_atomos(w1_jiandu),
-    w1_jiandu_atomos_top10 = get_leave_one_top_mean(w1_jiandu, 0.10),
-    w1_jiandu_atomos_top20 = get_leave_one_top_mean(w1_jiandu, 0.20),
-    w1_jiandu_atomos_sd = get_leave_one_sd(w1_jiandu),
-    w1_jiandu_atomos_cv = get_leave_one_cv(w1_jiandu),
-    w1_jiaoyang_atomos = get_atomos(w1_jiaoyang),
-    w1_jiaoyang_atomos_top10 = get_leave_one_top_mean(w1_jiaoyang, 0.10),
-    w1_jiaoyang_atomos_top20 = get_leave_one_top_mean(w1_jiaoyang, 0.20),
-    w1_jiaoyang_atomos_sd = get_leave_one_sd(w1_jiaoyang),
-    w1_jiaoyang_atomos_cv = get_leave_one_cv(w1_jiaoyang),
+    # 班级家长投入氛围：推进部分仅保留课外班参与、金钱投入、补习时间
     w1_buxi_rate_atomos = get_atomos(w1_buxi),
     w1_buxi_rate_atomos_top10 = get_leave_one_top_mean(w1_buxi, 0.10),
     w1_buxi_rate_atomos_top20 = get_leave_one_top_mean(w1_buxi, 0.20),
@@ -540,11 +470,6 @@ ceps <- ceps |>
     w1_buxi_time_atomos_top20 = get_leave_one_top_mean(w1_buxi_time_log, 0.20),
     w1_buxi_time_atomos_sd = get_leave_one_sd(w1_buxi_time_log),
     w1_buxi_time_atomos_cv = get_leave_one_cv(w1_buxi_time_log),
-    w1_contact_atomos = get_atomos(w1_contact),
-    w1_contact_atomos_top10 = get_leave_one_top_mean(w1_contact, 0.10),
-    w1_contact_atomos_top20 = get_leave_one_top_mean(w1_contact, 0.20),
-    w1_contact_atomos_sd = get_leave_one_sd(w1_contact),
-    w1_contact_atomos_cv = get_leave_one_cv(w1_contact),
 
     .by = clsids
   ) |>
@@ -565,31 +490,22 @@ ceps |>
 # 这里使用班级层整体氛围（班均值）进行分解，便于后续学校层随机斜率和跨层交互解释。
 class_climate_decomp <- ceps |>
   summarise(
-    cls_mean_w1_jiandu_atomos = mean(w1_jiandu, na.rm = TRUE),
-    cls_mean_w1_jiaoyang_atomos = mean(w1_jiaoyang, na.rm = TRUE),
     cls_mean_w1_buxi_rate_atomos = mean(w1_buxi, na.rm = TRUE),
     cls_mean_w1_buxi_money_atomos = mean(w1_buxi_money_log, na.rm = TRUE),
     cls_mean_w1_buxi_time_atomos = mean(w1_buxi_time_log, na.rm = TRUE),
-    cls_mean_w1_contact_atomos = mean(w1_contact, na.rm = TRUE),
     .by = c(schids, clsids)
   ) |>
   mutate(
-    sch_mean_w1_jiandu_atomos = mean(cls_mean_w1_jiandu_atomos, na.rm = TRUE),
-    sch_mean_w1_jiaoyang_atomos = mean(cls_mean_w1_jiaoyang_atomos, na.rm = TRUE),
     sch_mean_w1_buxi_rate_atomos = mean(cls_mean_w1_buxi_rate_atomos, na.rm = TRUE),
     sch_mean_w1_buxi_money_atomos = mean(cls_mean_w1_buxi_money_atomos, na.rm = TRUE),
     sch_mean_w1_buxi_time_atomos = mean(cls_mean_w1_buxi_time_atomos, na.rm = TRUE),
-    sch_mean_w1_contact_atomos = mean(cls_mean_w1_contact_atomos, na.rm = TRUE),
     .by = schids
   ) |>
   mutate(
-    cls_dev_from_sch_w1_jiandu_atomos = cls_mean_w1_jiandu_atomos - sch_mean_w1_jiandu_atomos,
-    cls_dev_from_sch_w1_jiaoyang_atomos = cls_mean_w1_jiaoyang_atomos - sch_mean_w1_jiaoyang_atomos,
     cls_dev_from_sch_w1_buxi_rate_atomos = cls_mean_w1_buxi_rate_atomos - sch_mean_w1_buxi_rate_atomos,
     cls_dev_from_sch_w1_buxi_money_atomos = cls_mean_w1_buxi_money_atomos -
       sch_mean_w1_buxi_money_atomos,
-    cls_dev_from_sch_w1_buxi_time_atomos = cls_mean_w1_buxi_time_atomos - sch_mean_w1_buxi_time_atomos,
-    cls_dev_from_sch_w1_contact_atomos = cls_mean_w1_contact_atomos - sch_mean_w1_contact_atomos
+    cls_dev_from_sch_w1_buxi_time_atomos = cls_mean_w1_buxi_time_atomos - sch_mean_w1_buxi_time_atomos
   ) |>
   select(
     schids,
@@ -603,53 +519,11 @@ ceps <- ceps |>
 
 ## %% 因变量 ------------------------------------------------
 
-# 监督频率：w2a18, w2a19
-# 教养方式：w2ba170,1:6
 # 是否补习：w2ba21
 # 补习费用：w2ba22
 # 补习时间：周中：w2b07c 周末：w2b08c
-# 主动联络：w2bb02
-
-# 教养方式严格程度（W2）
-w2_jiaoyang_data <- ceps |>
-  select(ids, starts_with("w2ba170")) |>
-  drop_na()
-w2_jiaoyang_pca_result <- PCA(
-  data = w2_jiaoyang_data,
-  var = "w2ba170",
-  items = 1:6,
-  nfactors = 1,
-  rotation = "none",
-  plot.scree = FALSE
-)
-
-# 家长每周监督辅导（W2）
-w2_jiandu_data <- ceps |>
-  select(ids, w2a18, w2a19) |>
-  drop_na()
-w2_jiandu_pca_result <- PCA(
-  data = w2_jiandu_data,
-  vars = c("w2a18", "w2a19"),
-  nfactors = 1,
-  rotation = "none",
-  plot.scree = FALSE
-)
 
 ceps <- ceps |>
-  left_join(
-    tibble(
-      ids = w2_jiandu_data$ids,
-      w2_jiandu = w2_jiandu_pca_result$result$scores[, 1]
-    ),
-    by = "ids"
-  ) |>
-  left_join(
-    tibble(
-      ids = w2_jiaoyang_data$ids,
-      w2_jiaoyang = w2_jiaoyang_pca_result$result$scores[, 1]
-    ),
-    by = "ids"
-  ) |>
   mutate(
     # 是否参与补习（W2）
     w2_buxi = case_when(
@@ -711,21 +585,11 @@ ceps <- ceps |>
       log(w2_buxi_time_raw),
       NA_real_,
       missing = NA_real_
-    ),
-    # 主动联络老师频率（W2）：保留标准分，同时新增原始有序变量
-    w2_contact = w2bb02,
-    w2_contact_ord = ordered(
-      w2_contact,
-      levels = 1:4,
-      labels = c("从来没有", "一次", "二次到四次", "五次及以上")
-    ),
-    w2_contact_z = as.numeric(scale(w2_contact))
+    )
   )
 
 ceps |>
   select(
-    w2_jiandu,
-    w2_jiaoyang,
     w2_buxi,
     w2_buxi_money_raw,
     w2_buxi_money_log,
@@ -734,11 +598,9 @@ ceps |>
     w2_buxi_time_raw,
     w2_buxi_time_log,
     w2_buxi_time_pos,
-    w2_buxi_time_pos_log,
-    w2_contact_z
+    w2_buxi_time_pos_log
   ) |>
   Describe()
-Freq(ceps$w2_contact_ord)
 
 
 # %% 4 缺失值插补 ------------------------------------------------
@@ -793,31 +655,23 @@ final_vars <- c(
   # 标识变量
   "ids", "clsids", "schids",
   # 因变量（W2）
-  "w2_jiandu", "w2_jiaoyang", "w2_buxi",
+  "w2_buxi",
   "w2_buxi_money_raw", "w2_buxi_money_log", "w2_buxi_money_pos", "w2_buxi_money_pos_log",
   "w2_buxi_time_raw", "w2_buxi_time_log", "w2_buxi_time_pos", "w2_buxi_time_pos_log",
-  "w2_contact_ord", "w2_contact_z",
   # 核心自变量（班级氛围）
   "w1_qiwang_atomos_z",
-  "w1_jiandu_atomos_z", "w1_jiaoyang_atomos_z", "w1_buxi_rate_atomos_z",
-  "w1_buxi_money_atomos_z", "w1_buxi_time_atomos_z", "w1_contact_atomos_z",
+  "w1_buxi_rate_atomos_z", "w1_buxi_money_atomos_z", "w1_buxi_time_atomos_z",
   # 班级氛围的极化与右尾特征
-  "w1_jiandu_atomos_top10_z", "w1_jiandu_atomos_top20_z", "w1_jiandu_atomos_sd_z", "w1_jiandu_atomos_cv_z",
-  "w1_jiaoyang_atomos_top10_z", "w1_jiaoyang_atomos_top20_z", "w1_jiaoyang_atomos_sd_z", "w1_jiaoyang_atomos_cv_z",
   "w1_buxi_rate_atomos_top10_z", "w1_buxi_rate_atomos_top20_z", "w1_buxi_rate_atomos_sd_z", "w1_buxi_rate_atomos_cv_z",
   "w1_buxi_money_atomos_top10_z", "w1_buxi_money_atomos_top20_z", "w1_buxi_money_atomos_sd_z", "w1_buxi_money_atomos_cv_z",
   "w1_buxi_time_atomos_top10_z", "w1_buxi_time_atomos_top20_z", "w1_buxi_time_atomos_sd_z", "w1_buxi_time_atomos_cv_z",
-  "w1_contact_atomos_top10_z", "w1_contact_atomos_top20_z", "w1_contact_atomos_sd_z", "w1_contact_atomos_cv_z",
   # 班级氛围的结构分解变量
-  "sch_mean_w1_jiandu_atomos", "sch_mean_w1_jiaoyang_atomos", "sch_mean_w1_buxi_rate_atomos",
-  "sch_mean_w1_buxi_money_atomos", "sch_mean_w1_buxi_time_atomos", "sch_mean_w1_contact_atomos",
-  "cls_dev_from_sch_w1_jiandu_atomos", "cls_dev_from_sch_w1_jiaoyang_atomos", "cls_dev_from_sch_w1_buxi_rate_atomos",
-  "cls_dev_from_sch_w1_buxi_money_atomos", "cls_dev_from_sch_w1_buxi_time_atomos", "cls_dev_from_sch_w1_contact_atomos",
+  "sch_mean_w1_buxi_rate_atomos", "sch_mean_w1_buxi_money_atomos", "sch_mean_w1_buxi_time_atomos",
+  "cls_dev_from_sch_w1_buxi_rate_atomos", "cls_dev_from_sch_w1_buxi_money_atomos", "cls_dev_from_sch_w1_buxi_time_atomos",
   # 滞后项（W1）
-  "w1_qiwang", "w1_jiandu", "w1_jiaoyang", "w1_buxi",
+  "w1_qiwang", "w1_buxi",
   "w1_buxi_money_log", "w1_buxi_money_pos", "w1_buxi_money_pos_log",
   "w1_buxi_time_log", "w1_buxi_time_pos", "w1_buxi_time_pos_log",
-  "w1_contact_ord", "w1_contact_z",
   # 控制变量：子女层面
   "stsex", "onechild", "sibling", "ethgro", "cog3pl", "baseline_perf", "baseline_perf_z", "jisu", "juzhu",
   # 控制变量：家长层面
