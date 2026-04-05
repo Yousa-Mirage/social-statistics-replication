@@ -17,6 +17,7 @@ replicate:
 # 执行推进部分的全流程脚本
 advance:
     Rscript ./scripts/11_adv_data_prepare.R
+    Rscript ./scripts/13_adv_regression_model.R
 
 # 编译 Typst 文档
 typst:
