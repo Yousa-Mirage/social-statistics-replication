@@ -9,6 +9,7 @@ suppressPackageStartupMessages({
   library(bruceR)
   library(here)
   library(glmmTMB)
+  library(marginaleffects)
   library(modelsummary)
   library(tinytable)
 })
@@ -44,6 +45,94 @@ build_formula <- function(dv, sch_mean_iv, cls_dev_iv, lagged_dv = NULL) {
 
   str_glue("{dv} ~ {str_c(rhs_terms, collapse = ' + ')} + (1 | schids/clsids)") |>
     as.formula()
+}
+
+compute_ame <- function(model, variable, label) {
+  suppressWarnings(
+    avg_slopes(
+      model,
+      variables = variable,
+      type = "response",
+      re.form = NA
+    )
+  ) |>
+    as_tibble() |>
+    transmute(
+      label,
+      ame = estimate,
+      std_error = std.error,
+      statistic,
+      p_value = p.value,
+      conf_low = .data[["conf.low"]],
+      conf_high = .data[["conf.high"]]
+    )
+}
+
+compute_probability_shift <- function(model, variable, label) {
+  model_data <- model.frame(model)
+  q <- quantile(model_data[[variable]], c(0.25, 0.75), na.rm = TRUE)
+
+  nd_q25 <- model_data
+  nd_q75 <- model_data
+  nd_q25[[variable]] <- unname(q[[1]])
+  nd_q75[[variable]] <- unname(q[[2]])
+
+  pred_q25 <- suppressWarnings(
+    predictions(model, newdata = nd_q25, type = "response", re.form = NA)
+  ) |>
+    summarise(prob_q25 = mean(estimate, na.rm = TRUE))
+
+  pred_q75 <- suppressWarnings(
+    predictions(model, newdata = nd_q75, type = "response", re.form = NA)
+  ) |>
+    summarise(prob_q75 = mean(estimate, na.rm = TRUE))
+
+  tibble(
+    label,
+    q25 = unname(q[[1]]),
+    q75 = unname(q[[2]]),
+    prob_q25 = pred_q25$prob_q25,
+    prob_q75 = pred_q75$prob_q75,
+    prob_change = pred_q75$prob_q75 - pred_q25$prob_q25
+  )
+}
+
+build_prediction_df <- function(model, sample_data, focal_var, n_points = 100) {
+  x_seq <- seq(
+    min(sample_data[[focal_var]], na.rm = TRUE),
+    max(sample_data[[focal_var]], na.rm = TRUE),
+    length.out = n_points
+  )
+
+  grid_args <- list(model = model, newdata = sample_data, grid_type = "mean_or_mode")
+  grid_args[[focal_var]] <- x_seq
+  newdata <- do.call(datagrid, grid_args)
+
+  suppressWarnings(
+    predictions(model, newdata = newdata, type = "response", re.form = NA)
+  ) |>
+    as_tibble() |>
+    mutate(x = x_seq)
+}
+
+plot_prediction_curve <- function(pred_df, x_label) {
+  ggplot(pred_df, aes(x = x, y = estimate)) +
+    geom_ribbon(aes(ymin = conf.low, ymax = conf.high), alpha = 0.18, fill = "#4C78A8") +
+    geom_line(linewidth = 1.1, color = "#1F4E79") +
+    scale_y_continuous(
+      limits = c(0, 1),
+      labels = scales::label_percent(accuracy = 1)
+    ) +
+    labs(
+      x = x_label,
+      y = "预测概率"
+    ) +
+    theme_minimal(base_size = 13, base_family = "Microsoft YaHei") +
+    theme(
+      text = element_text(family = "Microsoft YaHei"),
+      panel.grid.minor = element_blank(),
+      axis.title = element_text(face = "bold", family = "Microsoft YaHei")
+    )
 }
 
 # %% 建模样本 ------------------------------------------------
@@ -163,5 +252,46 @@ tab_decomp <- modelsummary(
 
 save_tt(tab_decomp, here(output_dir, "adv_structure_decomp_table.typ"), overwrite = TRUE)
 
+ame_decomp <- bind_rows(
+  compute_ame(model_entry, "sch_mean_w1_buxi_rate_atomos_z", "学校平均氛围"),
+  compute_ame(model_entry, "cls_dev_from_sch_w1_buxi_rate_atomos_z", "班级相对学校平均偏离")
+)
+
+shift_decomp <- bind_rows(
+  compute_probability_shift(model_entry, "sch_mean_w1_buxi_rate_atomos_z", "学校平均氛围"),
+  compute_probability_shift(
+    model_entry,
+    "cls_dev_from_sch_w1_buxi_rate_atomos_z",
+    "班级相对学校平均偏离"
+  )
+)
+
+pred_plot_2 <- build_prediction_df(model_entry, ceps_entry, "sch_mean_w1_buxi_rate_atomos_z")
+fig_2 <- plot_prediction_curve(pred_plot_2, "学校平均参与氛围（标准化）")
+
+ggsave(
+  filename = here(output_dir, "adv_pred_prob_plot_2.svg"),
+  plot = fig_2,
+  device = function(...) grDevices::svg(..., family = "Microsoft YaHei"),
+  width = 8,
+  height = 5,
+  bg = "white"
+)
+
 cli::cli_alert_success("推进部分第二阶段的模型拟合完成。")
 cli::cli_alert_info("模型表格输出: {.file {here(output_dir, 'adv_structure_decomp_table.typ')}}")
+cli::cli_alert_info("图 2 输出: {.file {here(output_dir, 'adv_pred_prob_plot_2.svg')}}")
+
+cat("\n=== 结构分解模型平均边际效应（概率尺度）===\n")
+print(
+  ame_decomp |>
+    mutate(across(where(is.numeric), ~ round(.x, 4))),
+  n = Inf
+)
+
+cat("\n=== 结构分解模型从 P25 到 P75 的平均预测概率变化 ===\n")
+print(
+  shift_decomp |>
+    mutate(across(where(is.numeric), ~ round(.x, 4))),
+  n = Inf
+)
