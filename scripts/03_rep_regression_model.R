@@ -7,6 +7,7 @@ suppressPackageStartupMessages({
   library(tidyverse)
   library(bruceR)
   library(here)
+  library(glmmTMB)
   library(modelsummary)
   library(tinytable)
 })
@@ -50,29 +51,41 @@ build_formula <- function(dv, iv_touru, lagged_dv) {
 
 # %% 模型拟合
 models_list <- list(
-  "学业辅导" = lmer(
+  "学业辅导" = glmmTMB(
     build_formula("w2_jiandu", "w1_jiandu_atomos_z", "w1_jiandu"),
-    data = ceps
+    data = ceps,
+    family = gaussian(),
+    REML = TRUE
   ),
-  "教养方式" = lmer(
+  "教养方式" = glmmTMB(
     build_formula("w2_jiaoyang", "w1_jiaoyang_atomos_z", "w1_jiaoyang"),
-    data = ceps
+    data = ceps,
+    family = gaussian(),
+    REML = TRUE
   ),
-  "课外班参与" = lmer(
+  "课外班参与" = glmmTMB(
     build_formula("w2_buxi", "w1_buxi_rate_atomos_z", "w1_buxi"),
-    data = ceps
+    data = ceps,
+    family = gaussian(),
+    REML = TRUE
   ),
-  "金钱投入" = lmer(
+  "金钱投入" = glmmTMB(
     build_formula("w2_buxi_money_log", "w1_buxi_money_atomos_z", "w1_buxi_money_log"),
-    data = ceps
+    data = ceps,
+    family = gaussian(),
+    REML = TRUE
   ),
-  "补习时间" = lmer(
+  "补习时间" = glmmTMB(
     build_formula("w2_buxi_time_log", "w1_buxi_time_atomos_z", "w1_buxi_time_log"),
-    data = ceps
+    data = ceps,
+    family = gaussian(),
+    REML = TRUE
   ),
-  "家校联系" = lmer(
+  "家校联系" = glmmTMB(
     build_formula("w2_contact_z", "w1_contact_atomos_z", "w1_contact_z"),
-    data = ceps
+    data = ceps,
+    family = gaussian(),
+    REML = TRUE
   )
 )
 
@@ -84,8 +97,7 @@ if (!exists("models_list")) {
 # 自定义 GOF 指标计算函数
 build_custom_gof <- function(models) {
   map_dfc(models, function(m) {
-    model_data <- m@frame
-    is_glmer <- inherits(m, "glmerMod")
+    model_data <- model.frame(m)
 
     # 1. 样本量与群组数
     n_obs <- nobs(m)
@@ -93,29 +105,21 @@ build_custom_gof <- function(models) {
     n_cls <- n_distinct(model_data$clsids)
 
     # 2. 提取方差分量计算 ICC
-    vc <- as_tibble(lme4::VarCorr(m))
-    var_sch <- vc |> filter(grp == "schids") |> pull(vcov)
-    var_cls <- vc |> filter(grepl("clsids", grp)) |> pull(vcov)
-    var_res <- if (is_glmer) {
-      (pi^2) / 3
-    } else {
-      vc |> filter(grp == "Residual") |> pull(vcov)
-    }
+    vc <- VarCorr(m)$cond
+    var_sch <- if ("schids" %in% names(vc)) as.numeric(vc[["schids"]][1]) else NA_real_
+    cls_name <- names(vc)[str_detect(names(vc), "clsids")]
+    var_cls <- if (length(cls_name) > 0) as.numeric(vc[[cls_name[1]]][1]) else NA_real_
+    var_res <- attr(vc, "sc")^2
 
-    total_var <- var_sch + var_cls + var_res
+    total_var <- sum(c(var_sch, var_cls, var_res), na.rm = TRUE)
     icc_sch <- var_sch / total_var
     icc_cls <- (var_sch + var_cls) / total_var
 
     # 3. 似然比检验 (LRT)
     f_fixed <- reformulas::nobars(formula(m))
 
-    if (is_glmer) {
-      m_null <- glm(f_fixed, data = model_data, family = family(m))
-      ll_full <- logLik(m)
-    } else {
-      m_null <- lm(f_fixed, data = model_data)
-      ll_full <- logLik(update(m, REML = FALSE))
-    }
+    m_null <- lm(f_fixed, data = model_data)
+    ll_full <- logLik(update(m, REML = FALSE))
     ll_null <- logLik(m_null)
 
     lrt_stat <- max(2 * (as.numeric(ll_full) - as.numeric(ll_null)), 0)

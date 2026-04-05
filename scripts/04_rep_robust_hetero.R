@@ -7,6 +7,7 @@ suppressPackageStartupMessages({
   library(tidyverse)
   library(bruceR)
   library(here)
+  library(glmmTMB)
   library(modelsummary)
   library(tinytable)
 })
@@ -47,29 +48,41 @@ build_formula <- function(dv, iv_touru, lagged_dv) {
 }
 
 robust_models_list <- list(
-  "学业辅导" = lmer(
+  "学业辅导" = glmmTMB(
     build_formula("w2_jiandu", "w1_jiandu_atomos_z", "w1_jiandu"),
-    data = ceps_random
+    data = ceps_random,
+    family = gaussian(),
+    REML = TRUE
   ),
-  "教养方式" = lmer(
+  "教养方式" = glmmTMB(
     build_formula("w2_jiaoyang", "w1_jiaoyang_atomos_z", "w1_jiaoyang"),
-    data = ceps_random
+    data = ceps_random,
+    family = gaussian(),
+    REML = TRUE
   ),
-  "课外班参与" = lmer(
+  "课外班参与" = glmmTMB(
     build_formula("w2_buxi", "w1_buxi_rate_atomos_z", "w1_buxi"),
-    data = ceps_random
+    data = ceps_random,
+    family = gaussian(),
+    REML = TRUE
   ),
-  "金钱投入" = lmer(
+  "金钱投入" = glmmTMB(
     build_formula("w2_buxi_money_log", "w1_buxi_money_atomos_z", "w1_buxi_money_log"),
-    data = ceps_random
+    data = ceps_random,
+    family = gaussian(),
+    REML = TRUE
   ),
-  "补习时间" = lmer(
+  "补习时间" = glmmTMB(
     build_formula("w2_buxi_time_log", "w1_buxi_time_atomos_z", "w1_buxi_time_log"),
-    data = ceps_random
+    data = ceps_random,
+    family = gaussian(),
+    REML = TRUE
   ),
-  "家校联系" = lmer(
+  "家校联系" = glmmTMB(
     build_formula("w2_contact_z", "w1_contact_atomos_z", "w1_contact_z"),
-    data = ceps_random
+    data = ceps_random,
+    family = gaussian(),
+    REML = TRUE
   )
 )
 
@@ -87,7 +100,7 @@ coef_map_robust <- c(
 # 稳健性检验 GOF 指标提取函数
 build_robust_gof <- function(models) {
   map_dfc(models, function(m) {
-    model_data <- m@frame
+    model_data <- model.frame(m)
     c(
       as.character(nobs(m)),
       as.character(n_distinct(model_data$schids)),
@@ -169,7 +182,7 @@ fit_hetero_models <- function(moderator) {
   models <- list()
   for (i in seq_along(dv_list)) {
     f <- build_hetero_formula(dv_list[i], iv_list[i], lag_list[i], moderator)
-    models[[model_names[i]]] <- lmer(f, data = ceps)
+    models[[model_names[i]]] <- glmmTMB(f, data = ceps, family = gaussian(), REML = TRUE)
   }
   models
 }
