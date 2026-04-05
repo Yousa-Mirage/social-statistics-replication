@@ -2,7 +2,6 @@
 # 目标：拟合推进部分第一阶段的 12 个模型，并输出 3 张 Typst 回归表。
 # 输入：data/adv_output/CEPS_prepared.rds
 # 输出：
-#   data/adv_output/adv_regression_models.rds,
 #   data/adv_output/adv_regression_table_1.typ,
 #   data/adv_output/adv_regression_table_2.typ,
 #   data/adv_output/adv_regression_table_3.typ
@@ -44,7 +43,6 @@ ctrl_vars <- c(
 
 build_formula <- function(dv, mean_iv, lagged_dv = NULL, extra_iv = NULL) {
   rhs_terms <- c("w1_qiwang_atomos_z", mean_iv, extra_iv, lagged_dv, ctrl_vars)
-  rhs_terms <- rhs_terms[!is.na(rhs_terms)]
 
   str_glue("{dv} ~ {str_c(rhs_terms, collapse = ' + ')} + (1 | schids/clsids)") |>
     as.formula()
@@ -212,12 +210,6 @@ table3_models <- list(
 
 # %% 结果整理 ------------------------------------------------
 
-all_models <- list(
-  "表1_课外班参与" = table1_models,
-  "表2_金钱投入强度" = table2_models,
-  "表3_补习时间强度" = table3_models
-)
-
 build_sample_gof <- function(models) {
   map_dfc(models, function(m) {
     model_data <- model.frame(m)
@@ -277,7 +269,7 @@ build_table <- function(models, coef_map, notes) {
     statistic = "({std.error})",
     stars = TRUE,
     notes = notes,
-    width = c(0.3, rep(0.12, length(models)))
+    width = c(0.25, rep(0.12, length(models)))
   ) |>
     theme_empty() |>
     style_tt(i = 0, line = "t", line_width = 0.1) |>
@@ -294,7 +286,7 @@ tab_reg_1 <- build_table(
   table1_models,
   coef_map_table1,
   c(
-    "注：因变量为是否参加课外班竞争的二元变量；样本限制为基期未参加课外班的家长。",
+    "注：因变量为是否参加课外班的二元变量，样本限制为基期未参加课外班的家长。",
     "+ p < 0.1, * p < 0.05, ** p < 0.01, *** p < 0.001"
   )
 ) |>
@@ -304,7 +296,7 @@ tab_reg_2 <- build_table(
   table2_models,
   coef_map_table2,
   c(
-    "注：因变量为正值样本中的补习支出对数强度；仅保留第二期有正支出的家庭。",
+    "注：因变量为正值样本中的补习支出对数强度，仅保留第二期有正支出的家庭。",
     "+ p < 0.1, * p < 0.05, ** p < 0.01, *** p < 0.001"
   )
 ) |>
@@ -314,7 +306,7 @@ tab_reg_3 <- build_table(
   table3_models,
   coef_map_table3,
   c(
-    "注：因变量为正值样本中的补习时间对数强度；仅保留第二期有正补习时间的家庭。",
+    "注：因变量为正值样本中的补习时间对数强度，仅保留第二期有正补习时间的家庭。",
     "+ p < 0.1, * p < 0.05, ** p < 0.01, *** p < 0.001"
   )
 ) |>

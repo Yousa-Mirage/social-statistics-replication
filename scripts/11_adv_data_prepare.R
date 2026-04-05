@@ -507,6 +507,13 @@ class_climate_decomp <- ceps |>
       sch_mean_w1_buxi_money_atomos,
     cls_dev_from_sch_w1_buxi_time_atomos = cls_mean_w1_buxi_time_atomos - sch_mean_w1_buxi_time_atomos
   ) |>
+  mutate(
+    across(
+      c(starts_with("sch_mean_"), starts_with("cls_dev_from_sch_")),
+      ~ as.numeric(scale(.x)),
+      .names = "{.col}_z"
+    )
+  ) |>
   select(
     schids,
     clsids,
@@ -668,6 +675,8 @@ final_vars <- c(
   # 班级氛围的结构分解变量
   "sch_mean_w1_buxi_rate_atomos", "sch_mean_w1_buxi_money_atomos", "sch_mean_w1_buxi_time_atomos",
   "cls_dev_from_sch_w1_buxi_rate_atomos", "cls_dev_from_sch_w1_buxi_money_atomos", "cls_dev_from_sch_w1_buxi_time_atomos",
+  "sch_mean_w1_buxi_rate_atomos_z", "sch_mean_w1_buxi_money_atomos_z", "sch_mean_w1_buxi_time_atomos_z",
+  "cls_dev_from_sch_w1_buxi_rate_atomos_z", "cls_dev_from_sch_w1_buxi_money_atomos_z", "cls_dev_from_sch_w1_buxi_time_atomos_z",
   # 滞后项（W1）
   "w1_qiwang", "w1_buxi",
   "w1_buxi_money_log", "w1_buxi_money_pos", "w1_buxi_money_pos_log",

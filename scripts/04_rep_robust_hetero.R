@@ -121,8 +121,13 @@ tab_robust <- modelsummary(
   coef_map = coef_map_robust,
   gof_omit = ".*",
   add_rows = build_robust_gof(robust_models_list),
+  estimate = "{estimate}{stars}",
+  statistic = "({std.error})",
   stars = TRUE,
-  notes = "注：因篇幅有限，本表中的控制变量和基期因变量的结果未报告，控制变量与表 2 相同。"
+  notes = c(
+    "注：因篇幅有限，本表中的控制变量和基期因变量的结果未报告，控制变量与表 2 相同。",
+    "+ p < 0.1, * p < 0.05, ** p < 0.01, *** p < 0.001"
+  )
 ) |>
   theme_empty() |>
   # 手动添加表格线
@@ -258,8 +263,8 @@ group_list <- list(
 tab_hetero <- final_hetero_df |>
   tt(
     notes = c(
-      "+ p < 0.1, * p < 0.05, ** p < 0.01, *** p < 0.001",
-      "注：因篇幅有限，本表中的控制变量和基期因变量的结果未报告，控制变量与表 2 相同。"
+      "注：因篇幅有限，本表中的控制变量和基期因变量的结果未报告，控制变量与表 2 相同。",
+      "+ p < 0.1, * p < 0.05, ** p < 0.01, *** p < 0.001"
     )
   ) |>
   # 插入分组标题
