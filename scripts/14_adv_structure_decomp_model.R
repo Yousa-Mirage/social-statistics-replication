@@ -115,23 +115,43 @@ build_prediction_df <- function(model, sample_data, focal_var, n_points = 100) {
     mutate(x = x_seq)
 }
 
-plot_prediction_curve <- function(pred_df, x_label) {
+plot_prediction_curve <- function(pred_df, x_label, q25, q75) {
   ggplot(pred_df, aes(x = x, y = estimate)) +
     geom_ribbon(aes(ymin = conf.low, ymax = conf.high), alpha = 0.18, fill = "#4C78A8") +
-    geom_line(linewidth = 1.1, color = "#1F4E79") +
-    scale_y_continuous(
-      limits = c(0, 1),
-      labels = scales::label_percent(accuracy = 1)
+    geom_vline(xintercept = c(q25, q75), linetype = "dashed", linewidth = 0.6, color = "#7A7A7A") +
+    annotate(
+      "text",
+      x = q25,
+      y = 1.08,
+      label = "P25",
+      family = "Microsoft YaHei",
+      size = 3.6,
+      color = "#5A5A5A"
     ) +
+    annotate(
+      "text",
+      x = q75,
+      y = 1.08,
+      label = "P75",
+      family = "Microsoft YaHei",
+      size = 3.6,
+      color = "#5A5A5A"
+    ) +
+    geom_line(linewidth = 1.1, color = "#1F4E79") +
+    scale_y_continuous(labels = scales::label_percent(accuracy = 1)) +
+    coord_cartesian(ylim = c(0, 1), clip = "off") +
     labs(
       x = x_label,
-      y = "预测概率"
+      y = "预测概率",
+      caption = "注：其余变量固定在样本均值或参照组，图中展示的是固定效应层面的预测概率及 95% 置信区间。"
     ) +
-    theme_minimal(base_size = 13, base_family = "Microsoft YaHei") +
+    theme_bw(base_size = 13, base_family = "Microsoft YaHei") +
     theme(
       text = element_text(family = "Microsoft YaHei"),
       panel.grid.minor = element_blank(),
-      axis.title = element_text(face = "bold", family = "Microsoft YaHei")
+      axis.title = element_text(face = "bold", family = "Microsoft YaHei"),
+      plot.caption = element_text(hjust = 0, size = 10.5, margin = margin(t = 8)),
+      plot.margin = margin(t = 20, r = 10, b = 10, l = 10)
     )
 }
 
@@ -267,7 +287,12 @@ shift_decomp <- bind_rows(
 )
 
 pred_plot_2 <- build_prediction_df(model_entry, ceps_entry, "sch_mean_w1_buxi_rate_atomos_z")
-fig_2 <- plot_prediction_curve(pred_plot_2, "学校平均参与氛围（标准化）")
+fig_2 <- plot_prediction_curve(
+  pred_plot_2,
+  "学校平均参与氛围（标准化）",
+  shift_decomp$q25[shift_decomp$label == "学校平均氛围"],
+  shift_decomp$q75[shift_decomp$label == "学校平均氛围"]
+)
 
 ggsave(
   filename = here(output_dir, "adv_pred_prob_plot_2.svg"),
