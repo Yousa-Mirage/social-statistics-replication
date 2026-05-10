@@ -5,9 +5,8 @@
 .env
 
 # Data
-data/
-
-# The Paper
-*.pdf
-papers/
-中学生家长内卷：期望与投入氛围的影响_肖志文.md
+data/*
+!data/CEPSw1/
+!data/CEPSw1/.gitignore
+!data/CEPSw2/
+!data/CEPSw2/.gitignore

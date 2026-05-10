@@ -7,6 +7,10 @@ MY_NAME := env("MY_NAME", "")
 default:
     just --list
 
+# 一键恢复 renv 环境
+restore-env:
+    Rscript -e "if (!requireNamespace('renv', quietly = TRUE)) install.packages('renv', repos = 'https://cloud.r-project.org'); renv::restore(prompt = FALSE)"
+
 # 执行复现部分的全流程脚本
 replicate:
     Rscript ./scripts/01_rep_data_prepare.R
@@ -33,3 +37,4 @@ format:
 alias rep := replicate
 alias adv := advance
 alias fmt := format
+alias env := restore-env
