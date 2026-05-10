@@ -17,6 +17,7 @@
 4. 运行 `just replicate`，执行复刻部分代码并输出结果；
 5. 运行 `just advance`，执行推进部分代码并输出结果；
 6. （如有 `typ` 作业源文件）运行 `just typst`，编译生成 Typst 报告。
+  - 编译报告可能需要特定字体，见 `papers/lib.typ`。
 
 ## 项目结构
 
