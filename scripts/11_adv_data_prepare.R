@@ -394,6 +394,8 @@ get_leave_one_sd <- function(x) {
   )
 }
 
+# CV 在均值为 0 的班级上没有定义，因此仅保留为备选指标；
+# 推进部分主分析使用更稳健的 leave-one-out 标准差（SD）。
 get_leave_one_cv <- function(x) {
   vapply(
     seq_along(x),
@@ -668,7 +670,7 @@ final_vars <- c(
   # 核心自变量（班级氛围）
   "w1_qiwang_atomos_z",
   "w1_buxi_rate_atomos_z", "w1_buxi_money_atomos_z", "w1_buxi_time_atomos_z",
-  # 班级氛围的极化与右尾特征
+  # 班级氛围的极化与右尾特征（主分析使用 SD）
   "w1_buxi_rate_atomos_top10_z", "w1_buxi_rate_atomos_top20_z", "w1_buxi_rate_atomos_sd_z", "w1_buxi_rate_atomos_cv_z",
   "w1_buxi_money_atomos_top10_z", "w1_buxi_money_atomos_top20_z", "w1_buxi_money_atomos_sd_z", "w1_buxi_money_atomos_cv_z",
   "w1_buxi_time_atomos_top10_z", "w1_buxi_time_atomos_top20_z", "w1_buxi_time_atomos_sd_z", "w1_buxi_time_atomos_cv_z",

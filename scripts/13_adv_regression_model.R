@@ -194,7 +194,7 @@ table1_models <- list(
     build_formula(
       "entry_buxi",
       "w1_buxi_rate_atomos_z",
-      extra_iv = c("w1_buxi_money_atomos_cv_z", "w1_buxi_time_atomos_cv_z")
+      extra_iv = c("w1_buxi_money_atomos_sd_z", "w1_buxi_time_atomos_sd_z")
     ),
     data = ceps_entry,
     family = binomial(link = "logit"),
@@ -207,8 +207,8 @@ table1_models <- list(
       extra_iv = c(
         "w1_buxi_money_atomos_top20_z",
         "w1_buxi_time_atomos_top20_z",
-        "w1_buxi_money_atomos_cv_z",
-        "w1_buxi_time_atomos_cv_z"
+        "w1_buxi_money_atomos_sd_z",
+        "w1_buxi_time_atomos_sd_z"
       )
     ),
     data = ceps_entry,
@@ -246,7 +246,7 @@ table2_models <- list(
       "w2_buxi_money_pos_log",
       "w1_buxi_money_atomos_z",
       "w1_buxi_money_log",
-      "w1_buxi_money_atomos_cv_z"
+      "w1_buxi_money_atomos_sd_z"
     ),
     data = ceps_money,
     family = gaussian(),
@@ -258,7 +258,7 @@ table2_models <- list(
       "w2_buxi_money_pos_log",
       "w1_buxi_money_atomos_z",
       "w1_buxi_money_log",
-      c("w1_buxi_money_atomos_top20_z", "w1_buxi_money_atomos_cv_z")
+      c("w1_buxi_money_atomos_top20_z", "w1_buxi_money_atomos_sd_z")
     ),
     data = ceps_money,
     family = gaussian(),
@@ -296,7 +296,7 @@ table3_models <- list(
       "w2_buxi_time_pos_log",
       "w1_buxi_time_atomos_z",
       "w1_buxi_time_log",
-      "w1_buxi_time_atomos_cv_z"
+      "w1_buxi_time_atomos_sd_z"
     ),
     data = ceps_time,
     family = gaussian(),
@@ -308,7 +308,7 @@ table3_models <- list(
       "w2_buxi_time_pos_log",
       "w1_buxi_time_atomos_z",
       "w1_buxi_time_log",
-      c("w1_buxi_time_atomos_top20_z", "w1_buxi_time_atomos_cv_z")
+      c("w1_buxi_time_atomos_top20_z", "w1_buxi_time_atomos_sd_z")
     ),
     data = ceps_time,
     family = gaussian(),
@@ -346,15 +346,15 @@ coef_map_table1 <- c(
   "w1_buxi_rate_atomos_z" = "班级课外班参与氛围",
   "w1_buxi_money_atomos_top20_z" = "班级补习支出右尾压力",
   "w1_buxi_time_atomos_top20_z" = "班级补习时间右尾压力",
-  "w1_buxi_money_atomos_cv_z" = "班级补习支出离散程度",
-  "w1_buxi_time_atomos_cv_z" = "班级补习时间离散程度",
+  "w1_buxi_money_atomos_sd_z" = "班级补习支出离散程度（SD）",
+  "w1_buxi_time_atomos_sd_z" = "班级补习时间离散程度（SD）",
   shared_coef_map
 )
 
 coef_map_table2 <- c(
   "w1_buxi_money_atomos_z" = "班级补习支出均值氛围",
   "w1_buxi_money_atomos_top20_z" = "班级补习支出右尾压力",
-  "w1_buxi_money_atomos_cv_z" = "班级补习支出离散程度",
+  "w1_buxi_money_atomos_sd_z" = "班级补习支出离散程度（SD）",
   "w1_buxi_money_log" = "基期补习支出",
   shared_coef_map
 )
@@ -362,7 +362,7 @@ coef_map_table2 <- c(
 coef_map_table3 <- c(
   "w1_buxi_time_atomos_z" = "班级补习时间均值氛围",
   "w1_buxi_time_atomos_top20_z" = "班级补习时间右尾压力",
-  "w1_buxi_time_atomos_cv_z" = "班级补习时间离散程度",
+  "w1_buxi_time_atomos_sd_z" = "班级补习时间离散程度（SD）",
   "w1_buxi_time_log" = "基期补习时间",
   shared_coef_map
 )
@@ -378,7 +378,7 @@ build_table <- function(models, coef_map, notes) {
     statistic = "({std.error})",
     stars = TRUE,
     notes = notes,
-    width = c(0.25, rep(0.12, length(models)))
+    width = c(0.3, rep(0.12, length(models)))
   ) |>
     theme_empty() |>
     style_tt(i = 0, line = "t", line_width = 0.1) |>
@@ -395,7 +395,7 @@ tab_reg_1 <- build_table(
   table1_models,
   coef_map_table1,
   c(
-    "注：因变量为是否参加课外班的二元变量，样本限制为基期未参加课外班的家长。",
+    "注：因变量为是否进入课外班竞争的二元变量，样本限制为基期未参加课外班的家长。",
     "+ p < 0.1, * p < 0.05, ** p < 0.01, *** p < 0.001"
   )
 ) |>

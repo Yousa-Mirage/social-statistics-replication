@@ -22,8 +22,8 @@ advance:
 
 # 编译 Typst 文档
 typst:
-    typst compile ./papers/1-选题说明.typ {{ "./papers/" + MY_NAME + "_选题说明.pdf" }} --root .
-    typst compile ./papers/2-论文初稿.typ {{ "./papers/" + MY_NAME + "_论文初稿.pdf" }} --root .
+    typst compile ./papers/1-选题说明.typ {{ "./papers/" + MY_NAME + "选题说明.pdf" }} --root .
+    typst compile ./papers/2-论文初稿.typ {{ "./papers/" + MY_NAME + "论文初稿.pdf" }} --root .
 
 # 运行 Air 格式化
 format:

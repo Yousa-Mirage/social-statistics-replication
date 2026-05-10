@@ -213,7 +213,7 @@ model_time <- glmmTMB(
 )
 
 models_list <- list(
-  "是否参加课外班" = model_entry,
+  "是否进入课外班竞争" = model_entry,
   "金钱投入强度" = model_money,
   "补习时间强度" = model_time
 )
@@ -254,9 +254,9 @@ tab_decomp <- modelsummary(
   estimate = "{estimate}{stars}",
   statistic = "({std.error})",
   stars = TRUE,
-  width = c(0.25, rep(0.17, length(models_list))),
+  width = c(0.25, 0.21, 0.17, 0.17),
   notes = c(
-    "注：表中仅报告两项核心分解变量的估计结果。表 1 的因变量为是否参加课外班的二元变量，样本限制为基期未参加课外班的家长。",
+    "注：表中仅报告两项核心分解变量的估计结果，其他控制变量与表 5–7 保持一致。第一列因变量为第二期是否参加课外班，样本限制为基期未参加课外班的家长；第二、三列分别以正值样本中的课外班金钱投入对数和补习时间对数为因变量。学校平均氛围和班级相对学校平均偏离均由班级层整体均值分解得到。",
     "+ p < 0.1, * p < 0.05, ** p < 0.01, *** p < 0.001"
   )
 ) |>
